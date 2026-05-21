@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Simulateur Freelance Artiste Auteur</title>
+    <title>Simulateur Freelance : Artiste Auteur vs Micro-Entreprise</title>
     <style>
-        /* === (UI conservée) === */
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -34,6 +33,17 @@
         .form-input:focus, .form-select:focus { outline:none; border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,0.1); }
         .form-input:hover, .form-select:hover { border-color:#d1d5db; }
 
+        /* Segmented Control / Regime Switch */
+        .regime-selector {
+            display: flex; background: #f3f4f6; padding: 4px; border-radius: 10px; margin-bottom: 24px;
+        }
+        .regime-btn {
+            flex: 1; text-align: center; padding: 10px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: transparent; color: #4b5563;
+        }
+        .regime-btn.active {
+            background: white; color: #667eea; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
         /* switch */
         .switch-container { display:flex; align-items:center; gap:12px; }
         .switch { position:relative; width:48px; height:24px; }
@@ -54,7 +64,7 @@
         .radio-option label { font-size:0.875rem; font-weight:500; cursor:pointer; }
 
         .conditional-input { margin-top:12px; opacity:1; max-height:none; overflow:visible; transition:all .3s; }
-        .conditional-input.hidden { opacity:0; max-height:0; overflow:hidden; }
+        .conditional-input.hidden { opacity:0; max-height:0; overflow:hidden; display: none; }
 
         .results-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; }
         .results-section { margin-bottom:24px; }
@@ -80,14 +90,19 @@
         .alert-success { background:#d1fae5; border:1px solid #10b981; color:#047857; }
         .alert-icon { font-size:1rem; font-weight:bold; }
 
+        /* Panel Taux Edit */
+        .rates-config-panel { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-top: 16px; }
+        .rates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+
         @media (max-width:767px) {
             .container { padding:0 10px; }
             .header h1 { font-size:2rem; }
             .card { padding:24px; }
             .radio-group { flex-direction:column; gap:12px; }
+            .rates-grid { grid-template-columns: 1fr; }
         }
 
-        .hidden { display:none; }
+        .hidden { display:none !important; }
         .euro { color:#10b981; }
         .text-red { color:#ef4444; }
     </style>
@@ -95,8 +110,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Simulateur Artiste Auteur</h1>
-            <p>Calculez vos revenus nets et charges en freelance</p>
+            <h1>Simulateur de Revenus Freelance</h1>
+            <p>Optimisez et comparez les statuts Artiste-Auteur et Micro-Entreprise</p>
         </div>
 
         <div class="main-grid">
@@ -104,12 +119,19 @@
             <div class="card">
                 <h2 class="card-title">Configuration</h2>
                 
+                <!-- Switch de Régime -->
+                <label class="form-label">Régime Professionnel</label>
+                <div class="regime-selector">
+                    <button type="button" class="regime-btn active" id="btnAA" onclick="setRegime('artiste-auteur')">Artiste-Auteur</button>
+                    <button type="button" class="regime-btn" id="btnME" onclick="setRegime('micro-entreprise')">Micro-Entreprise</button>
+                </div>
+
                 <!-- Mode de calcul -->
                 <div class="form-group">
                     <label class="form-label" for="calculationMode">Mode de calcul</label>
                     <select class="form-select" id="calculationMode">
                         <option value="mission">Mission ponctuelle</option>
-                        <option value="tjm">TJM + jours facturés/an</option>
+                        <option value="tjm" selected>TJM + jours facturés/an</option>
                         <option value="netAnnual">Revenu net annuel souhaité</option>
                     </select>
                 </div>
@@ -133,7 +155,7 @@
                 </div>
 
                 <!-- Mission ponctuelle -->
-                <div id="missionGroup" class="">
+                <div id="missionGroup" class="hidden">
                     <div class="form-group">
                         <label class="form-label">Type de mission</label>
                         <div class="radio-group">
@@ -148,7 +170,7 @@
                         </div>
                     </div>
 
-                    <div class="form-group" id="weeklyRateGroup">
+                    <div class="form-group hidden" id="weeklyRateGroup">
                         <label class="form-label" for="daysPerWeek">Jours facturés par semaine</label>
                         <input type="number" class="form-input" id="daysPerWeek" min="0.5" max="7" step="0.5" value="3">
                     </div>
@@ -159,31 +181,22 @@
                         <div class="info-text">Interprété comme <em>jours par mois</em> quand la durée en mois est appliquée.</div>
                     </div>
 
-                    <!-- Nouveau : nombre de mois (1-12) -->
                     <div class="form-group" id="missionMonthsGroup">
                         <label class="form-label" for="missionMonths">Durée (mois)</label>
                         <select class="form-select" id="missionMonths">
                             <option value="1">1 mois</option>
                             <option value="2">2 mois</option>
-                            <option value="3">3 mois</option>
+                            <option value="3" selected>3 mois</option>
                             <option value="4">4 mois</option>
                             <option value="5">5 mois</option>
                             <option value="6">6 mois</option>
-                            <option value="7">7 mois</option>
-                            <option value="8">8 mois</option>
-                            <option value="9">9 mois</option>
-                            <option value="10">10 mois</option>
-                            <option value="11">11 mois</option>
                             <option value="12">12 mois</option>
                         </select>
-                        <div class="info-text">Utilisé pour estimer la durée (appliqué pour les deux types : Rythme/semaine et Total de jours).</div>
                     </div>
 
-                    <!-- Nouveau : possibilité d'ajuster la moyenne semaines/mois -->
                     <div class="form-group" id="weeksPerMonthGroup">
                         <label class="form-label" for="weeksPerMonth">Semaines par mois (moyenne)</label>
                         <input type="number" class="form-input" id="weeksPerMonth" step="0.001" min="1" max="5" value="4.333">
-                        <div class="info-text">Moyenne utilisée : 4,333 semaines/mois par défaut. Modifie si tu veux une autre convention.</div>
                     </div>
                 </div>
 
@@ -209,68 +222,63 @@
                     </div>
                 </div>
 
-                <!-- Type de calcul IR -->
-                <div class="form-group">
-                    <label class="form-label">Calcul de l'impôt sur le revenu</label>
-                    <div class="radio-group">
-                        <div class="radio-option">
-                            <input type="radio" id="abattement" name="irCalculation" value="abattement" checked>
-                            <label for="abattement">Abattement 34%</label>
+                <!-- Type de calcul IR (Masqué si Micro-entreprise) -->
+                <div class="form-group-conditional-regime" id="irCalculationBlock">
+                    <div class="form-group">
+                        <label class="form-label">Calcul de l'impôt sur le revenu (AA)</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="abattement" name="irCalculation" value="abattement" checked>
+                                <label for="abattement">Abattement Micro (34%)</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="fraisReels" name="irCalculation" value="fraisReels">
+                                <label for="fraisReels">Frais réels</label>
+                            </div>
                         </div>
-                        <div class="radio-option">
-                            <input type="radio" id="fraisReels" name="irCalculation" value="fraisReels">
-                            <label for="fraisReels">Frais réels</label>
+                        
+                        <div class="conditional-input hidden" id="fraisReelsInput">
+                            <label class="form-label" for="fraisReelsAmount">Montant des frais réels (€/an)</label>
+                            <input type="number" class="form-input" id="fraisReelsAmount" min="0" step="100" value="5000">
                         </div>
-                    </div>
-                    
-                    <div class="conditional-input" id="fraisReelsInput">
-                        <label class="form-label" for="fraisReelsAmount">Montant des frais réels (€)</label>
-                        <input type="number" class="form-input" id="fraisReelsAmount" min="0" step="100" value="5000">
-                    </div>
-                </div>
-
-                <!-- Charges déductibles -->
-                <div class="form-group">
-                    <div class="switch-container">
-                        <div class="switch">
-                            <input type="checkbox" id="chargesDeductiblesEnabled">
-                            <span class="switch-slider"></span>
-                        </div>
-                        <label class="switch-label" for="chargesDeductiblesEnabled">Charges déductibles détaillées</label>
-                    </div>
-                </div>
-
-                <div class="conditional-input hidden" id="chargesDeductiblesGroup">
-                    <div class="form-group">
-                        <label class="form-label" for="fraisFormation">Frais de formation professionnelle (€)</label>
-                        <input type="number" class="form-input" id="fraisFormation" min="0" step="50" value="0">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="materielInfo">Matériel informatique / an (€)</label>
-                        <input type="number" class="form-input" id="materielInfo" min="0" step="100" value="0">
-                        <div class="info-text">Amortissement sur 3 ans</div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="fraisDeplacementKm">Kilomètres professionnels / an</label>
-                        <input type="number" class="form-input" id="fraisDeplacementKm" min="0" step="100" value="0">
-                        <div class="info-text">Barème 2025 : 0,518€/km (&lt; 5000km)</div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="abonnementsLogiciels">Abonnements logiciels / an (€)</label>
-                        <input type="number" class="form-input" id="abonnementsLogiciels" min="0" step="50" value="0">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="fraisBureau">Frais bureau/coworking / an (€)</label>
-                        <input type="number" class="form-input" id="fraisBureau" min="0" step="100" value="0">
                     </div>
 
-                    <div class="result-item" style="background: #f0f9ff; padding: 12px; border-radius: 6px; margin-top: 12px;">
-                        <span class="result-label" style="color: #1e40af;">Total charges déductibles</span>
-                        <span class="result-value" style="color: #1e40af;" id="totalChargesDeductibles">0 €</span>
+                    <!-- Charges déductibles (Masqué si Micro-entreprise) -->
+                    <div class="form-group">
+                        <div class="switch-container">
+                            <div class="switch">
+                                <input type="checkbox" id="chargesDeductiblesEnabled">
+                                <span class="switch-slider"></span>
+                            </div>
+                            <label class="switch-label" for="chargesDeductiblesEnabled">Charges déductibles détaillées (AA)</label>
+                        </div>
+                    </div>
+
+                    <div class="conditional-input hidden" id="chargesDeductiblesGroup">
+                        <div class="form-group">
+                            <label class="form-label" for="fraisFormation">Frais de formation professionnelle (€)</label>
+                            <input type="number" class="form-input" id="fraisFormation" min="0" step="50" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="materielInfo">Matériel informatique / an (€)</label>
+                            <input type="number" class="form-input" id="materielInfo" min="0" step="100" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="fraisDeplacementKm">Kilomètres professionnels / an</label>
+                            <input type="number" class="form-input" id="fraisDeplacementKm" min="0" step="100" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="abonnementsLogiciels">Abonnements logiciels / an (€)</label>
+                            <input type="number" class="form-input" id="abonnementsLogiciels" min="0" step="50" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="fraisBureau">Frais bureau/coworking / an (€)</label>
+                            <input type="number" class="form-input" id="fraisBureau" min="0" step="100" value="0">
+                        </div>
+                        <div class="result-item" style="background: #f0f9ff; padding: 12px; border-radius: 6px; margin-top: 12px;">
+                            <span class="result-label" style="color: #1e40af;">Total charges déductibles</span>
+                            <span class="result-value" style="color: #1e40af;" id="totalChargesDeductibles">0 €</span>
+                        </div>
                     </div>
                 </div>
 
@@ -285,16 +293,31 @@
                     </div>
                 </div>
 
-                <div class="info-badge">
-                    <strong>Taux 2025 :</strong> URSSAF AA 17,5% • RAAP 8% • Abattement fiscal 34%
+                <!-- ACCORDION MODIFICATION DES TAUX DIRECTEMENT DANS L'UI -->
+                <div class="rates-config-panel">
+                    <label class="form-label" style="color:#4f46e5;">⚙️ Ajustement dynamique des taux</label>
+                    <div class="rates-grid">
+                        <div>
+                            <label class="info-text">URSSAF Artiste-Auteur (%)</label>
+                            <input type="number" class="form-input" id="rateUrssafAA" step="0.1" value="17.5">
+                        </div>
+                        <div>
+                            <label class="info-text">RAAP Artiste-Auteur (%)</label>
+                            <input type="number" class="form-input" id="rateRaapAA" step="0.1" value="8.0">
+                        </div>
+                        <div>
+                            <label class="info-text">URSSAF Micro-Ent. (%)</label>
+                            <input type="number" class="form-input" id="rateUrssafME" step="0.1" value="23.2">
+                        </div>
+                        <div>
+                            <label class="info-text">CFP Micro-Ent. (%)</label>
+                            <input type="number" class="form-input" id="rateCfpME" step="0.01" value="0.2">
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Alertes TVA et conseils -->
                 <div id="alertsContainer"></div>
-
-                <button class="reset-button" id="resetButton">
-                    Réinitialiser
-                </button>
+                <button class="reset-button" id="resetButton">Réinitialiser</button>
             </div>
 
             <!-- Results Card -->
@@ -303,7 +326,7 @@
                 
                 <!-- Revenus de la mission -->
                 <div class="results-section">
-                    <h3 class="results-section-title">📊 Revenus de la mission</h3>
+                    <h3 class="results-section-title">📊 Revenus et Cotisations</h3>
                     
                     <div class="result-item">
                         <span class="result-label">Chiffre d'affaires brut</span>
@@ -316,18 +339,29 @@
                     </div>
                     
                     <div class="result-item">
-                        <span class="result-label">CA HT</span>
+                        <span class="result-label">Chiffre d'affaires HT</span>
                         <span class="result-value euro" id="resultCAHT">0 €</span>
                     </div>
                     
-                    <div class="result-item">
-                        <span class="result-label">URSSAF Artistes Auteurs (17,5%)</span>
+                    <!-- Lignes dynamiques selon le régime -->
+                    <div class="result-item" id="rowUrssafAA">
+                        <span class="result-label" id="labelUrssafAA">URSSAF Artistes Auteurs</span>
                         <span class="result-value text-red" id="resultURSSAF">0 €</span>
                     </div>
                     
-                    <div class="result-item">
-                        <span class="result-label">RAAP (8%)</span>
+                    <div class="result-item" id="rowRaapAA">
+                        <span class="result-label" id="labelRaapAA">RAAP</span>
                         <span class="result-value text-red" id="resultRAAP">0 €</span>
+                    </div>
+
+                    <div class="result-item hidden" id="rowUrssafME">
+                        <span class="result-label" id="labelUrssafME">Cotisations Micro-Entreprise</span>
+                        <span class="result-value text-red" id="resultUrssafMEValue">0 €</span>
+                    </div>
+
+                    <div class="result-item hidden" id="rowCfpME">
+                        <span class="result-label" id="labelCfpME">Formation Professionnelle (CFP)</span>
+                        <span class="result-value text-red" id="resultCfpMEValue">0 €</span>
                     </div>
                     
                     <div class="result-highlight">
@@ -345,18 +379,13 @@
                     <h3 class="results-section-title">🧾 Fiscalité</h3>
                     
                     <div class="result-item">
-                        <span class="result-label">Revenus imposables</span>
+                        <span class="result-label">Revenus imposables (après abattement/frais)</span>
                         <span class="result-value" id="resultRevenusImposables">0 €</span>
                     </div>
                     
                     <div class="result-item">
-                        <span class="result-label">Taux PAS</span>
-                        <span class="result-value" id="displaySourceRate">8.5%</span>
-                    </div>
-                    
-                    <div class="result-item">
-                        <span class="result-label">Parts fiscales</span>
-                        <span class="result-value" id="displayFiscalParts">2.5</span>
+                        <span class="result-label">Taux Prélèvement à la Source</span>
+                        <span class="result-value" id="displaySourceRate">0 %</span>
                     </div>
                     
                     <div class="result-item">
@@ -374,66 +403,55 @@
 
                 <div class="separator"></div>
 
-                <!-- Résultats mensuels (si applicable) -->
+                <!-- Résultats mensuels -->
                 <div class="results-section" id="monthlyResults">
-                    <h3 class="results-section-title">📅 Revenus mensuels</h3>
-                    
+                    <h3 class="results-section-title">📅 Moyenne Mensuelle</h3>
                     <div class="result-item">
                         <span class="result-label">Net mensuel avant impôts</span>
                         <span class="result-value euro" id="resultMonthlyNetAvant">0 €</span>
                     </div>
-                    
                     <div class="result-item">
                         <span class="result-label">Net mensuel après impôts</span>
                         <span class="result-value euro" id="resultMonthlyNetApres">0 €</span>
                     </div>
                 </div>
 
-                <div class="separator"></div>
-
-                <!-- Calculs avancés (si activés) -->
-                <div class="results-section" id="calculsAvancesResults">
+                <!-- Calculs avancés -->
+                <div class="results-section hidden" id="calculsAvancesResults">
+                    <div class="separator"></div>
                     <h3 class="results-section-title">💰 Provisions et épargne</h3>
-                    
                     <div class="result-item">
                         <span class="result-label">Provision congés payés (10%)</span>
                         <span class="result-value euro" id="resultProvisionConges">0 €</span>
                     </div>
-                    
                     <div class="result-item">
                         <span class="result-label">Épargne retraite recommandée (15%)</span>
                         <span class="result-value euro" id="resultEpargneRetraite">0 €</span>
                     </div>
-                    
                     <div class="result-highlight">
                         <div class="result-item">
-                            <span class="result-label">Net après provisions</span>
+                            <span class="result-label">Net disponible après provisions</span>
                             <span class="result-value euro" id="resultNetApresProvisions">0 €</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="info-badge warning-badge" style="margin-top: 20px;">
-                    <strong>Note :</strong> Simulation basée sur les taux 2025. Consultez un expert-comptable pour une estimation précise.
+                    <strong>Note :</strong> Simulation basée sur les taux personnalisables ci-contre. Pas de versement libératoire appliqué pour la ME.
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Constantes fiscales 2025
-        const FISCAL_RATES = {
-            URSSAF_AA: 0.175,
-            RAAP: 0.08,
-            VAT: 0.20,
-            ABATTEMENT: 0.34,
-            SEUIL_TVA: 47700,
-            BAREME_KM_2025: 0.518,
-            PROVISION_CONGES: 0.10,
-            EPARGNE_RETRAITE: 0.15
-        };
+        // État de l'application
+        let currentRegime = 'artiste-auteur';
 
-        // DOM
+        // Constantes de base
+        const SEUIL_TVA = 47700;
+        const BAREME_KM_2025 = 0.518;
+
+        // DOM Elements
         const calculationMode = document.getElementById('calculationMode');
         const tjm = document.getElementById('tjm');
         const tjmLabel = document.getElementById('tjmLabel');
@@ -449,6 +467,7 @@
         const calculsAvancesEnabled = document.getElementById('calculsAvancesEnabled');
         const resetButton = document.getElementById('resetButton');
 
+        // Formations / Charges
         const fraisFormation = document.getElementById('fraisFormation');
         const materielInfo = document.getElementById('materielInfo');
         const fraisDeplacementKm = document.getElementById('fraisDeplacementKm');
@@ -459,10 +478,16 @@
         const fraisReels = document.getElementById('fraisReels');
         const missionByWeek = document.getElementById('missionByWeek');
         const missionByTotal = document.getElementById('missionByTotal');
-
         const missionMonths = document.getElementById('missionMonths');
         const weeksPerMonth = document.getElementById('weeksPerMonth');
 
+        // Taux UI Inputs
+        const rateUrssafAA = document.getElementById('rateUrssafAA');
+        const rateRaapAA = document.getElementById('rateRaapAA');
+        const rateUrssafME = document.getElementById('rateUrssafME');
+        const rateCfpME = document.getElementById('rateCfpME');
+
+        // Blocks & Rows
         const tjmGroup = document.getElementById('tjmGroup');
         const netAnnualGroup = document.getElementById('netAnnualGroup');
         const daysPerYearGroup = document.getElementById('daysPerYearGroup');
@@ -473,312 +498,235 @@
         const chargesDeductiblesGroup = document.getElementById('chargesDeductiblesGroup');
         const calculsAvancesResults = document.getElementById('calculsAvancesResults');
         const alertsContainer = document.getElementById('alertsContainer');
+        const irCalculationBlock = document.getElementById('irCalculationBlock');
 
-        // utils
+        // Rows d'affichage des résultats
+        const rowUrssafAA = document.getElementById('rowUrssafAA');
+        const rowRaapAA = document.getElementById('rowRaapAA');
+        const rowUrssafME = document.getElementById('rowUrssafME');
+        const rowCfpME = document.getElementById('rowCfpME');
+
+        // Formatters
         function formatCurrency(amount) {
             return new Intl.NumberFormat('fr-FR', { style:'currency', currency:'EUR', minimumFractionDigits:0, maximumFractionDigits:0 }).format(Math.round(amount));
         }
-        function formatPercentage(rate) {
-            return (rate * 100).toFixed(1) + '%';
-        }
 
-        // label TJM update when TVA toggled
-        function updateTJMLabel() {
-            const currentTJM = parseFloat(tjm.value) || 0;
-            if (vatEnabled.checked) {
-                tjmLabel.textContent = 'TJM TTC (€)';
-                if (currentTJM > 0 && !tjm.dataset.tvaConverted) {
-                    tjm.value = Math.round(currentTJM * 1.2);
-                    tjm.dataset.tvaConverted = "true";
-                }
+        // Switch de Régime
+        function setRegime(regime) {
+            currentRegime = regime;
+            document.getElementById('btnAA').classList.toggle('active', regime === 'artiste-auteur');
+            document.getElementById('btnME').classList.toggle('active', regime === 'micro-entreprise');
+            
+            if(regime === 'micro-entreprise') {
+                irCalculationBlock.classList.add('hidden'); // ME pas de frais réels possibles
+                rowUrssafAA.classList.add('hidden');
+                rowRaapAA.classList.add('hidden');
+                rowUrssafME.classList.remove('hidden');
+                rowCfpME.classList.remove('hidden');
             } else {
-                tjmLabel.textContent = 'TJM HT (€)';
-                if (currentTJM > 0 && tjm.dataset.tvaConverted === "true") {
-                    tjm.value = Math.round(currentTJM / 1.2);
-                    delete tjm.dataset.tvaConverted;
-                }
+                irCalculationBlock.classList.remove('hidden');
+                rowUrssafAA.classList.remove('hidden');
+                rowRaapAA.classList.remove('hidden');
+                rowUrssafME.classList.add('hidden');
+                rowCfpME.classList.add('hidden');
             }
+            calculate();
         }
 
-        // charges déductibles
+        // Gestion des libellés de taux dynamiques dans la section Résultats
+        function updateLabels() {
+            document.getElementById('labelUrssafAA').textContent = `URSSAF Artistes Auteurs (${rateUrssafAA.value}%)`;
+            document.getElementById('labelRaapAA').textContent = `RAAP (${rateRaapAA.value}%)`;
+            document.getElementById('labelUrssafME').textContent = `Cotisations Micro-Entreprise (${rateUrssafME.value}%)`;
+            document.getElementById('labelCfpME').textContent = `Formation Professionnelle CFP (${rateCfpME.value}%)`;
+        }
+
         function calculateChargesDeductibles() {
-            if (!chargesDeductiblesEnabled.checked) return 0;
+            if (!chargesDeductiblesEnabled.checked || currentRegime === 'micro-entreprise') return 0;
             const formation = parseFloat(fraisFormation.value) || 0;
             const materiel = (parseFloat(materielInfo.value) || 0) / 3;
-            const km = (parseFloat(fraisDeplacementKm.value) || 0) * FISCAL_RATES.BAREME_KM_2025;
+            const km = (parseFloat(fraisDeplacementKm.value) || 0) * BAREME_KM_2025;
             const logiciels = parseFloat(abonnementsLogiciels.value) || 0;
             const bureau = parseFloat(fraisBureau.value) || 0;
             return formation + materiel + km + logiciels + bureau;
         }
-        function updateChargesDeductiblesDisplay() {
-            const total = calculateChargesDeductibles();
-            document.getElementById('totalChargesDeductibles').textContent = formatCurrency(total);
+
+        // Moteur de calcul principal
+        function calculate() {
+            updateLabels();
+            const mode = calculationMode.value;
+            const tvaFacturee = vatEnabled.checked;
+            
+            // Récupération des taux de l'UI
+            const uAA = (parseFloat(rateUrssafAA.value) || 0) / 100;
+            const rAA = (parseFloat(rateRaapAA.value) || 0) / 100;
+            const uME = (parseFloat(rateUrssafME.value) || 0) / 100;
+            const cME = (parseFloat(rateCfpME.value) || 0) / 100;
+            const pSource = (parseFloat(sourceRate.value) || 0) / 100;
+
+            let caHT = 0;
+            let totalJoursSimules = 220; 
+            let moisSimules = 12;
+
+            // 1. Calcul du CA HT de base selon le mode
+            if (mode === 'tjm') {
+                const inputTjm = parseFloat(tjm.value) || 0;
+                const jAn = parseFloat(daysPerYear.value) || 0;
+                caHT = tvaFacturee ? (inputTjm / 1.2) * jAn : inputTjm * jAn;
+                totalJoursSimules = jAn;
+                moisSimules = 12;
+            } 
+            else if (mode === 'mission') {
+                const inputTjm = parseFloat(tjm.value) || 0;
+                const tjmHT = tvaFacturee ? (inputTjm / 1.2) : inputTjm;
+                const mois = parseFloat(missionMonths.value) || 1;
+                moisSimules = mois;
+
+                if (missionByWeek.checked) {
+                    const jSemaine = parseFloat(daysPerWeek.value) || 0;
+                    const semMois = parseFloat(weeksPerMonth.value) || 4.333;
+                    totalJoursSimules = jSemaine * semMois * mois;
+                } else {
+                    const jMois = parseFloat(totalDays.value) || 0;
+                    totalJoursSimules = jMois * mois;
+                }
+                caHT = tjmHT * totalJoursSimules;
+            } 
+            else if (mode === 'netAnnual') {
+                const cibleNet = parseFloat(netAnnualTarget.value) || 0;
+                // Calcul inverse simplifié pré-impôt
+                if (currentRegime === 'artiste-auteur') {
+                    caHT = cibleNet / (1 - uAA - rAA);
+                } else {
+                    caHT = cibleNet / (1 - uME - cME);
+                }
+                moisSimules = 12;
+            }
+
+            // Calcul de la TVA collectée
+            const vateValue = tvaFacturee ? caHT * 0.2 : 0;
+            const revenueBrut = caHT + vateValue;
+
+            // 2. Calcul des charges sociales
+            let urssafAAValue = 0;
+            let raapAAValue = 0;
+            let urssafMEValue = 0;
+            let cfpMEValue = 0;
+            let netAvantIR = 0;
+
+            if (currentRegime === 'artiste-auteur') {
+                urssafAAValue = caHT * uAA;
+                raapAAValue = caHT * rAA;
+                netAvantIR = caHT - urssafAAValue - raapAAValue;
+            } else {
+                urssafMEValue = caHT * uME;
+                cfpMEValue = caHT * cME;
+                netAvantIR = caHT - urssafMEValue - cfpMEValue;
+            }
+
+            // 3. Calcul de l'assiette imposable
+            let baseImposable = 0;
+            if (currentRegime === 'artiste-auteur') {
+                if (fraisReels.checked) {
+                    baseImposable = netAvantIR - parseFloat(fraisReelsAmount.value || 0);
+                } else {
+                    baseImposable = caHT * (1 - 0.34); // abattement 34% classique
+                }
+                baseImposable -= calculateChargesDeductibles();
+            } else {
+                // Micro-entreprise : Abattement forfaitaire automatique de 34% (BNC services)
+                baseImposable = caHT * (1 - 0.34);
+            }
+            if (baseImposable < 0) baseImposable = 0;
+
+            // 4. Impôt sur le revenu
+            const impotEstime = baseImposable * pSource;
+            const netApresIR = netAvantIR - impotEstime;
+
+            // 5. Moyennes mensuelles
+            const netMensuelAvant = netAvantIR / moisSimules;
+            const netMensuelApres = netApresIR / moisSimules;
+
+            // 6. Provisions
+            const provConges = netAvantIR * 0.10;
+            const epargneRetraite = netAvantIR * 0.15;
+            const netApresProvisions = netApresIR - provConges - epargneRetraite;
+
+            // --- AFFICHAGE DES RÉSULTATS ---
+            document.getElementById('resultRevenueBrut').textContent = formatCurrency(revenueBrut);
+            document.getElementById('resultVAT').textContent = formatCurrency(vateValue);
+            document.getElementById('resultCAHT').textContent = formatCurrency(caHT);
+            
+            document.getElementById('resultURSSAF').textContent = formatCurrency(urssafAAValue);
+            document.getElementById('resultRAAP').textContent = formatCurrency(raapAAValue);
+            document.getElementById('resultUrssafMEValue').textContent = formatCurrency(urssafMEValue);
+            document.getElementById('resultCfpMEValue').textContent = formatCurrency(cfpMEValue);
+            
+            document.getElementById('resultNetAvantIR').textContent = formatCurrency(netAvantIR);
+            document.getElementById('resultRevenusImposables').textContent = formatCurrency(baseImposable);
+            document.getElementById('displaySourceRate').textContent = (pSource * 100).toFixed(1) + ' %';
+            document.getElementById('resultImpot').textContent = formatCurrency(impotEstime);
+            document.getElementById('resultNetApresIR').textContent = formatCurrency(netApresIR);
+            
+            document.getElementById('resultMonthlyNetAvant').textContent = formatCurrency(netMensuelAvant);
+            document.getElementById('resultMonthlyNetApres').textContent = formatCurrency(netMensuelApres);
+
+            document.getElementById('resultProvisionConges').textContent = formatCurrency(provConges);
+            document.getElementById('resultEpargneRetraite').textContent = formatCurrency(epargneRetraite);
+            document.getElementById('resultNetApresProvisions').textContent = formatCurrency(netApresProvisions);
+
+            // Mise à jour des alertes contextuelles
+            triggerAlerts(caHT, vateValue, tvaFacturee);
         }
 
-        // alerts
-        function updateAlerts(results) {
+        // Système d'alertes PM
+        function triggerAlerts(caHT, vat, tvaFacturee) {
             const alerts = [];
-            if (!vatEnabled.checked && results.revenueBrut > FISCAL_RATES.SEUIL_TVA) {
-                const depassement = results.revenueBrut - FISCAL_RATES.SEUIL_TVA;
-                alerts.push({ type:'warning', icon:'⚠️', message:`Attention : CA ${formatCurrency(results.revenueBrut)} > seuil TVA (${formatCurrency(FISCAL_RATES.SEUIL_TVA)}). Dépassement : ${formatCurrency(depassement)}. Activez la TVA !` });
+            if (!tvaFacturee && caHT > SEUIL_TVA) {
+                alerts.push({ type:'warning', icon:'⚠️', message:`Attention : Votre CA de ${formatCurrency(caHT)} dépasse le seuil de franchise de TVA (${formatCurrency(SEUIL_TVA)}). Activez l'option TVA !` });
             }
-            if (vatEnabled.checked && results.revenueBrut < FISCAL_RATES.SEUIL_TVA * 0.8) {
-                alerts.push({ type:'info', icon:'💡', message:`Conseil : Votre CA est sous le seuil TVA. Vous pourriez désactiver la TVA et économiser ${formatCurrency(results.vat)}.` });
-            }
-            if (results.revenueBrut > 10000) {
-                alerts.push({ type:'info', icon:'📅', message:'Rappel : Déclarations trimestrielles URSSAF et déclaration annuelle des revenus avant mai.' });
-            }
-            if (results.revenusImposables > 30000 && abattement.checked) {
-                const chargesCalculees = calculateChargesDeductibles();
-                const abattementActuel = results.caHT * FISCAL_RATES.ABATTEMENT;
-                if (chargesCalculees > abattementActuel * 1.2) {
-                    alerts.push({ type:'success', icon:'💰', message:`Optimisation : Vos frais réels (${formatCurrency(chargesCalculees)}) dépassent l'abattement (${formatCurrency(abattementActuel)}). Activez les frais réels !` });
-                }
+            if (currentRegime === 'micro-entreprise' && caHT > 77700) {
+                alerts.push({ type:'warning', icon:'🚨', message:`Alerte Seuil : En micro-entreprise de services, le plafond est de 77 700 €. Vous projetez ${formatCurrency(caHT)}.` });
             }
             alertsContainer.innerHTML = alerts.map(a => `<div class="alert-box alert-${a.type}"><span class="alert-icon">${a.icon}</span><span>${a.message}</span></div>`).join('');
         }
 
-        // visibility by mode
-        function updateVisibilityBasedOnMode() {
-            const mode = calculationMode.value;
-            tjmGroup.classList.remove('hidden');
-            netAnnualGroup.classList.add('hidden');
-            daysPerYearGroup.classList.remove('hidden');
-            missionGroup.classList.add('hidden');
-            if (mode === 'netAnnual') {
-                netAnnualGroup.classList.remove('hidden');
-                tjmGroup.classList.add('hidden');
-            } else if (mode === 'mission') {
-                daysPerYearGroup.classList.add('hidden');
-                missionGroup.classList.remove('hidden');
-                updateMissionType();
-            }
-        }
-
-        function updateMissionType() {
-            // we show weekly & total inputs and the months dropdown is always available within missionGroup
-            if (missionByWeek.checked) {
-                weeklyRateGroup.classList.remove('hidden');
-                totalDaysGroup.classList.add('hidden');
-            } else {
-                weeklyRateGroup.classList.add('hidden');
-                totalDaysGroup.classList.remove('hidden');
-            }
-        }
-
-        function updateIRCalculation() {
-            if (fraisReels.checked) fraisReelsInput.classList.remove('hidden'); else fraisReelsInput.classList.add('hidden');
-        }
-
-        function updateChargesDeductiblesVisibility() {
-            if (chargesDeductiblesEnabled.checked) chargesDeductiblesGroup.classList.remove('hidden'); else chargesDeductiblesGroup.classList.add('hidden');
-            updateChargesDeductiblesDisplay();
-        }
-
-        function updateCalculsAvancesVisibility() {
-            if (calculsAvancesEnabled.checked) calculsAvancesResults.classList.remove('hidden'); else calculsAvancesResults.classList.add('hidden');
-        }
-
-        // Calculs principaux
-        function calculateFromTJM() {
-            const tjmValue = parseFloat(tjm.value) || 0;
-            const days = parseFloat(daysPerYear.value) || 0;
-            if (vatEnabled.checked) {
-                const tjmHT = tjmValue / 1.2;
-                return tjmHT * days;
-            } else {
-                return tjmValue * days;
-            }
-        }
-
-        function calculateFromMission() {
-            const tjmValue = parseFloat(tjm.value) || 0;
-            let totalDaysWorked = 0;
-            const months = parseInt(missionMonths.value) || 1;
-            const weeksPerMonthVal = parseFloat(weeksPerMonth.value) || 4.333;
-
-            if (missionByWeek.checked) {
-                const daysWeek = parseFloat(daysPerWeek.value) || 0;
-                totalDaysWorked = daysWeek * months * weeksPerMonthVal;
-            } else {
-                // NOTE: here we interpret totalDays input as "jours par mois" when months dropdown is applied
-                const daysPerMonthValue = parseFloat(totalDays.value) || 0;
-                totalDaysWorked = daysPerMonthValue * months;
-            }
-
-            let tjmHT = tjmValue;
-            if (vatEnabled.checked) tjmHT = tjmValue / 1.2;
-
-            return {
-                revenue: tjmHT * totalDaysWorked,
-                days: totalDaysWorked
-            };
-        }
-
-        function calculateFromNetAnnual() {
-            const netTarget = parseFloat(netAnnualTarget.value) || 0;
-            const days = parseFloat(daysPerYear.value) || 200;
-            let caEstime = netTarget / 0.65;
-            for (let i=0;i<10;i++){
-                const simulation = calculateResults(caEstime, days);
-                const ecart = simulation.netApresIR - netTarget;
-                if (Math.abs(ecart) < 100) break;
-                caEstime -= ecart * 0.8;
-            }
-            return caEstime;
-        }
-
-        function calculateResults(revenueBrutHT, totalDays = null) {
-            const caHT = revenueBrutHT;
-            const vat = vatEnabled.checked ? caHT * FISCAL_RATES.VAT : 0;
-            const caBrut = caHT + vat;
-            const sourceRateValue = parseFloat(sourceRate.value) || 0;
-            const urssaf = caHT * FISCAL_RATES.URSSAF_AA;
-            const raap = caHT * FISCAL_RATES.RAAP;
-            const netAvantIR = caHT - urssaf - raap;
-
-            let revenusImposables;
-            if (abattement.checked) {
-                revenusImposables = caHT * (1 - FISCAL_RATES.ABATTEMENT);
-            } else {
-                let frais = parseFloat(fraisReelsAmount.value) || 0;
-                if (chargesDeductiblesEnabled.checked) frais += calculateChargesDeductibles();
-                revenusImposables = Math.max(0, caHT - frais);
-            }
-
-            const impot = revenusImposables * sourceRateValue / 100;
-            const netApresIR = netAvantIR - impot;
-            const provisionConges = netAvantIR * FISCAL_RATES.PROVISION_CONGES;
-            const epargneRetraite = netAvantIR * FISCAL_RATES.EPARGNE_RETRAITE;
-            const netApresProvisions = netApresIR - provisionConges - epargneRetraite;
-
-            return {
-                revenueBrut: caBrut,
-                vat,
-                caHT,
-                urssaf,
-                raap,
-                netAvantIR,
-                revenusImposables,
-                impot,
-                netApresIR,
-                provisionConges,
-                epargneRetraite,
-                netApresProvisions,
-                totalDays
-            };
-        }
-
-        function updateResults() {
-            let revenueBrutHT = 0;
-            let totalDays = null;
-            const mode = calculationMode.value;
-
-            if (mode === 'tjm') {
-                revenueBrutHT = calculateFromTJM();
-                totalDays = parseFloat(daysPerYear.value) || 0;
-            } else if (mode === 'netAnnual') {
-                revenueBrutHT = calculateFromNetAnnual();
-                totalDays = parseFloat(daysPerYear.value) || 0;
-                let calculatedTJM = totalDays > 0 ? revenueBrutHT / totalDays : 0;
-                if (vatEnabled.checked) calculatedTJM = calculatedTJM * 1.2;
-                document.getElementById('tjm').value = Math.round(calculatedTJM);
-            } else if (mode === 'mission') {
-                const missionResult = calculateFromMission();
-                revenueBrutHT = missionResult.revenue;
-                totalDays = missionResult.days;
-            }
-
-            const results = calculateResults(revenueBrutHT, totalDays);
-
-            document.getElementById('resultRevenueBrut').textContent = formatCurrency(results.revenueBrut);
-            document.getElementById('resultVAT').textContent = formatCurrency(results.vat);
-            document.getElementById('resultCAHT').textContent = formatCurrency(results.caHT);
-            document.getElementById('resultURSSAF').textContent = formatCurrency(results.urssaf);
-            document.getElementById('resultRAAP').textContent = formatCurrency(results.raap);
-            document.getElementById('resultNetAvantIR').textContent = formatCurrency(results.netAvantIR);
-            document.getElementById('resultRevenusImposables').textContent = formatCurrency(results.revenusImposables);
-            document.getElementById('resultImpot').textContent = formatCurrency(results.impot);
-            document.getElementById('resultNetApresIR').textContent = formatCurrency(results.netApresIR);
-
-            if (calculsAvancesEnabled.checked) {
-                document.getElementById('resultProvisionConges').textContent = formatCurrency(results.provisionConges);
-                document.getElementById('resultEpargneRetraite').textContent = formatCurrency(results.epargneRetraite);
-                document.getElementById('resultNetApresProvisions').textContent = formatCurrency(results.netApresProvisions);
-            }
-
-            document.getElementById('displaySourceRate').textContent = formatPercentage(parseFloat(sourceRate.value)/100);
-            document.getElementById('displayFiscalParts').textContent = fiscalParts.value;
-
-            const vatResult = document.getElementById('vatResult');
-            if (vatEnabled.checked) vatResult.style.display = 'flex'; else vatResult.style.display = 'none';
-
-            const monthlyResults = document.getElementById('monthlyResults');
-            if (totalDays && totalDays > 21) {
-                monthlyResults.classList.remove('hidden');
-                document.getElementById('resultMonthlyNetAvant').textContent = formatCurrency(results.netAvantIR / 12);
-                document.getElementById('resultMonthlyNetApres').textContent = formatCurrency(results.netApresIR / 12);
-            } else {
-                monthlyResults.classList.add('hidden');
-            }
-
-            updateChargesDeductiblesDisplay();
-            updateAlerts(results);
-        }
-
-        function resetForm() {
-            calculationMode.value = 'mission';
-            tjm.value = '650';
-            netAnnualTarget.value = '50000';
-            daysPerYear.value = '200';
-            daysPerWeek.value = '3';
-            totalDays.value = '60';
-            fiscalParts.value = '2.5';
-            sourceRate.value = '13';
-            vatEnabled.checked = false;
-            fraisReelsAmount.value = '5000';
-            chargesDeductiblesEnabled.checked = false;
-            calculsAvancesEnabled.checked = false;
-            fraisFormation.value = '0';
-            materielInfo.value = '0';
-            fraisDeplacementKm.value = '0';
-            abonnementsLogiciels.value = '0';
-            fraisBureau.value = '0';
-            abattement.checked = true;
-            fraisReels.checked = false;
-            missionByWeek.checked = false;
-            missionByTotal.checked = true;
-            missionMonths.value = '1';
-            weeksPerMonth.value = '4.333';
-
-            updateVisibilityBasedOnMode();
-            updateMissionType();
-            updateIRCalculation();
-            updateChargesDeductiblesVisibility();
-            updateCalculsAvancesVisibility();
-            updateTJMLabel();
-            updateResults();
-        }
-
-        // listeners
-        calculationMode.addEventListener('change', () => { updateVisibilityBasedOnMode(); updateResults(); });
-
-        [tjm, netAnnualTarget, daysPerYear, daysPerWeek, totalDays, fiscalParts, sourceRate, fraisReelsAmount,
-         fraisFormation, materielInfo, fraisDeplacementKm, abonnementsLogiciels, fraisBureau, missionMonths, weeksPerMonth].forEach(el=>{
-            el.addEventListener('input', updateResults);
+        // Listeners d'interface
+        const inputs = [calculationMode, tjm, netAnnualTarget, daysPerYear, daysPerWeek, totalDays, fiscalParts, sourceRate, vatEnabled, fraisReelsAmount, chargesDeductiblesEnabled, calculsAvancesEnabled, fraisFormation, materielInfo, fraisDeplacementKm, abonnementsLogiciels, fraisBureau, abattement, fraisReels, missionByWeek, missionByTotal, missionMonths, weeksPerMonth, rateUrssafAA, rateRaapAA, rateUrssafME, rateCfpME];
+        
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                // Toggles de visibilité à la volée
+                tjmGroup.classList.toggle('hidden', calculationMode.value === 'netAnnual');
+                netAnnualGroup.classList.toggle('hidden', calculationMode.value !== 'netAnnual');
+                daysPerYearGroup.classList.toggle('hidden', calculationMode.value !== 'tjm');
+                missionGroup.classList.toggle('hidden', calculationMode.value !== 'mission');
+                weeklyRateGroup.classList.toggle('hidden', !missionByWeek.checked || calculationMode.value !== 'mission');
+                totalDaysGroup.classList.toggle('hidden', missionByWeek.checked || calculationMode.value !== 'mission');
+                fraisReelsInput.classList.toggle('hidden', !fraisReels.checked || currentRegime === 'micro-entreprise');
+                chargesDeductiblesGroup.classList.toggle('hidden', !chargesDeductiblesEnabled.checked || currentRegime === 'micro-entreprise');
+                calculsAvancesResults.classList.toggle('hidden', !calculsAvancesEnabled.checked);
+                
+                tjmLabel.textContent = vatEnabled.checked ? 'TJM TTC (€)' : 'TJM HT (€)';
+                
+                if(chargesDeductiblesEnabled.checked && currentRegime === 'artiste-auteur') {
+                    document.getElementById('totalChargesDeductibles').textContent = formatCurrency(calculateChargesDeductibles());
+                }
+                calculate();
+            });
         });
 
-        vatEnabled.addEventListener('change', ()=>{ updateTJMLabel(); updateResults(); });
-        chargesDeductiblesEnabled.addEventListener('change', ()=>{ updateChargesDeductiblesVisibility(); updateResults(); });
-        calculsAvancesEnabled.addEventListener('change', ()=>{ updateCalculsAvancesVisibility(); updateResults(); });
+        // Reset
+        resetButton.addEventListener('click', () => {
+            tjm.value = 650;
+            daysPerYear.value = 200;
+            calculationMode.value = 'tjm';
+            vatEnabled.checked = false;
+            setRegime('artiste-auteur');
+        });
 
-        [abattement, fraisReels].forEach(r => r.addEventListener('change', ()=>{ updateIRCalculation(); updateResults(); }));
-        [missionByWeek, missionByTotal].forEach(r => r.addEventListener('change', ()=>{ updateMissionType(); updateResults(); }));
-
-        resetButton.addEventListener('click', (e)=>{ e.preventDefault(); resetForm(); });
-
-        // init
-        resetForm();
+        // Init automatique
+        calculate();
     </script>
 </body>
 </html>
