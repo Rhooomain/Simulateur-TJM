@@ -225,7 +225,7 @@
                 <!-- Type de calcul IR (Masqué si Micro-entreprise) -->
                 <div class="form-group-conditional-regime" id="irCalculationBlock">
                     <div class="form-group">
-                        <label class="form-label">Calcul de l'impôt sur le revenu (AA)</label>
+                        <label class="form-label">Calcul de l'impôt sur le revue (AA)</label>
                         <div class="radio-group">
                             <div class="radio-option">
                                 <input type="radio" id="abattement" name="irCalculation" value="abattement" checked>
@@ -293,7 +293,7 @@
                     </div>
                 </div>
 
-                <!-- ACCORDION MODIFICATION DES TAUX DIRECTEMENT DANS L'UI -->
+                <!-- AJUSTEMENT DES TAUX -->
                 <div class="rates-config-panel">
                     <label class="form-label" style="color:#4f46e5;">⚙️ Ajustement dynamique des taux</label>
                     <div class="rates-grid">
@@ -329,18 +329,20 @@
                     <h3 class="results-section-title">📊 Revenus et Cotisations</h3>
                     
                     <div class="result-item">
-                        <span class="result-label">Chiffre d'affaires brut</span>
-                        <span class="result-value euro" id="resultRevenueBrut">0 €</span>
+                        <span class="result-label">Chiffre d'affaires HT</span>
+                        <span class="result-value euro" id="resultCAHT">0 €</span>
                     </div>
-                    
+
                     <div class="result-item" id="vatResult">
-                        <span class="result-label">TVA (20%)</span>
+                        <span class="result-label">TVA Collectée (20%)</span>
                         <span class="result-value text-red" id="resultVAT">0 €</span>
                     </div>
                     
-                    <div class="result-item">
-                        <span class="result-label">Chiffre d'affaires HT</span>
-                        <span class="result-value euro" id="resultCAHT">0 €</span>
+                    <div class="result-highlight" style="background: rgba(255,255,255,0.05); margin-bottom: 12px;">
+                        <div class="result-item">
+                            <span class="result-label" style="font-weight: 700;">Chiffre d'affaires Facturé TTC</span>
+                            <span class="result-value euro" id="resultRevenueBrut" style="font-size: 1.2rem;">0 €</span>
+                        </div>
                     </div>
                     
                     <!-- Lignes dynamiques selon le régime -->
@@ -379,7 +381,7 @@
                     <h3 class="results-section-title">🧾 Fiscalité</h3>
                     
                     <div class="result-item">
-                        <span class="result-label">Revenus imposables (après abattement/frais)</span>
+                        <span class="result-label">Revenus imposables</span>
                         <span class="result-value" id="resultRevenusImposables">0 €</span>
                     </div>
                     
@@ -444,10 +446,7 @@
     </div>
 
     <script>
-        // État de l'application
         let currentRegime = 'artiste-auteur';
-
-        // Constantes de base
         const SEUIL_TVA = 47700;
         const BAREME_KM_2025 = 0.518;
 
@@ -467,7 +466,7 @@
         const calculsAvancesEnabled = document.getElementById('calculsAvancesEnabled');
         const resetButton = document.getElementById('resetButton');
 
-        // Formations / Charges
+        // Charges
         const fraisFormation = document.getElementById('fraisFormation');
         const materielInfo = document.getElementById('materielInfo');
         const fraisDeplacementKm = document.getElementById('fraisDeplacementKm');
@@ -481,13 +480,13 @@
         const missionMonths = document.getElementById('missionMonths');
         const weeksPerMonth = document.getElementById('weeksPerMonth');
 
-        // Taux UI Inputs
+        // Taux UI
         const rateUrssafAA = document.getElementById('rateUrssafAA');
         const rateRaapAA = document.getElementById('rateRaapAA');
         const rateUrssafME = document.getElementById('rateUrssafME');
         const rateCfpME = document.getElementById('rateCfpME');
 
-        // Blocks & Rows
+        // Blocks
         const tjmGroup = document.getElementById('tjmGroup');
         const netAnnualGroup = document.getElementById('netAnnualGroup');
         const daysPerYearGroup = document.getElementById('daysPerYearGroup');
@@ -500,25 +499,22 @@
         const alertsContainer = document.getElementById('alertsContainer');
         const irCalculationBlock = document.getElementById('irCalculationBlock');
 
-        // Rows d'affichage des résultats
         const rowUrssafAA = document.getElementById('rowUrssafAA');
         const rowRaapAA = document.getElementById('rowRaapAA');
         const rowUrssafME = document.getElementById('rowUrssafME');
         const rowCfpME = document.getElementById('rowCfpME');
 
-        // Formatters
         function formatCurrency(amount) {
             return new Intl.NumberFormat('fr-FR', { style:'currency', currency:'EUR', minimumFractionDigits:0, maximumFractionDigits:0 }).format(Math.round(amount));
         }
 
-        // Switch de Régime
         function setRegime(regime) {
             currentRegime = regime;
             document.getElementById('btnAA').classList.toggle('active', regime === 'artiste-auteur');
             document.getElementById('btnME').classList.toggle('active', regime === 'micro-entreprise');
             
             if(regime === 'micro-entreprise') {
-                irCalculationBlock.classList.add('hidden'); // ME pas de frais réels possibles
+                irCalculationBlock.classList.add('hidden');
                 rowUrssafAA.classList.add('hidden');
                 rowRaapAA.classList.add('hidden');
                 rowUrssafME.classList.remove('hidden');
@@ -533,7 +529,6 @@
             calculate();
         }
 
-        // Gestion des libellés de taux dynamiques dans la section Résultats
         function updateLabels() {
             document.getElementById('labelUrssafAA').textContent = `URSSAF Artistes Auteurs (${rateUrssafAA.value}%)`;
             document.getElementById('labelRaapAA').textContent = `RAAP (${rateRaapAA.value}%)`;
@@ -551,13 +546,11 @@
             return formation + materiel + km + logiciels + bureau;
         }
 
-        // Moteur de calcul principal
         function calculate() {
             updateLabels();
             const mode = calculationMode.value;
             const tvaFacturee = vatEnabled.checked;
             
-            // Récupération des taux de l'UI
             const uAA = (parseFloat(rateUrssafAA.value) || 0) / 100;
             const rAA = (parseFloat(rateRaapAA.value) || 0) / 100;
             const uME = (parseFloat(rateUrssafME.value) || 0) / 100;
@@ -565,20 +558,19 @@
             const pSource = (parseFloat(sourceRate.value) || 0) / 100;
 
             let caHT = 0;
-            let totalJoursSimules = 220; 
+            let totalJoursSimules = 200; 
             let moisSimules = 12;
 
-            // 1. Calcul du CA HT de base selon le mode
+            // Le TJM saisi est TOUJOURS considéré comme la base HT nette du freelance
+            const inputTjmHT = parseFloat(tjm.value) || 0;
+
             if (mode === 'tjm') {
-                const inputTjm = parseFloat(tjm.value) || 0;
                 const jAn = parseFloat(daysPerYear.value) || 0;
-                caHT = tvaFacturee ? (inputTjm / 1.2) * jAn : inputTjm * jAn;
+                caHT = inputTjmHT * jAn;
                 totalJoursSimules = jAn;
                 moisSimules = 12;
             } 
             else if (mode === 'mission') {
-                const inputTjm = parseFloat(tjm.value) || 0;
-                const tjmHT = tvaFacturee ? (inputTjm / 1.2) : inputTjm;
                 const mois = parseFloat(missionMonths.value) || 1;
                 moisSimules = mois;
 
@@ -590,11 +582,10 @@
                     const jMois = parseFloat(totalDays.value) || 0;
                     totalJoursSimules = jMois * mois;
                 }
-                caHT = tjmHT * totalJoursSimules;
+                caHT = inputTjmHT * totalJoursSimules;
             } 
             else if (mode === 'netAnnual') {
                 const cibleNet = parseFloat(netAnnualTarget.value) || 0;
-                // Calcul inverse simplifié pré-impôt
                 if (currentRegime === 'artiste-auteur') {
                     caHT = cibleNet / (1 - uAA - rAA);
                 } else {
@@ -603,11 +594,11 @@
                 moisSimules = 12;
             }
 
-            // Calcul de la TVA collectée
-            const vateValue = tvaFacturee ? caHT * 0.2 : 0;
-            const revenueBrut = caHT + vateValue;
+            // Correction de la logique de TVA : Elle s'AJOUTE au CA HT, elle ne le réduit pas.
+            const vateValue = tvaFacturee ? caHT * 0.20 : 0;
+            const revenueBrutTTC = caHT + vateValue;
 
-            // 2. Calcul des charges sociales
+            // Calcul des cotisations basées strictement sur le CA HT
             let urssafAAValue = 0;
             let raapAAValue = 0;
             let urssafMEValue = 0;
@@ -624,38 +615,34 @@
                 netAvantIR = caHT - urssafMEValue - cfpMEValue;
             }
 
-            // 3. Calcul de l'assiette imposable
+            // Assiette imposable
             let baseImposable = 0;
             if (currentRegime === 'artiste-auteur') {
                 if (fraisReels.checked) {
                     baseImposable = netAvantIR - parseFloat(fraisReelsAmount.value || 0);
                 } else {
-                    baseImposable = caHT * (1 - 0.34); // abattement 34% classique
+                    baseImposable = caHT * (1 - 0.34);
                 }
                 baseImposable -= calculateChargesDeductibles();
             } else {
-                // Micro-entreprise : Abattement forfaitaire automatique de 34% (BNC services)
                 baseImposable = caHT * (1 - 0.34);
             }
             if (baseImposable < 0) baseImposable = 0;
 
-            // 4. Impôt sur le revenu
             const impotEstime = baseImposable * pSource;
             const netApresIR = netAvantIR - impotEstime;
 
-            // 5. Moyennes mensuelles
             const netMensuelAvant = netAvantIR / moisSimules;
             const netMensuelApres = netApresIR / moisSimules;
 
-            // 6. Provisions
             const provConges = netAvantIR * 0.10;
             const epargneRetraite = netAvantIR * 0.15;
             const netApresProvisions = netApresIR - provConges - epargneRetraite;
 
-            // --- AFFICHAGE DES RÉSULTATS ---
-            document.getElementById('resultRevenueBrut').textContent = formatCurrency(revenueBrut);
-            document.getElementById('resultVAT').textContent = formatCurrency(vateValue);
+            // Rendu UI
             document.getElementById('resultCAHT').textContent = formatCurrency(caHT);
+            document.getElementById('resultVAT').textContent = formatCurrency(vateValue);
+            document.getElementById('resultRevenueBrut').textContent = formatCurrency(revenueBrutTTC);
             
             document.getElementById('resultURSSAF').textContent = formatCurrency(urssafAAValue);
             document.getElementById('resultRAAP').textContent = formatCurrency(raapAAValue);
@@ -675,12 +662,10 @@
             document.getElementById('resultEpargneRetraite').textContent = formatCurrency(epargneRetraite);
             document.getElementById('resultNetApresProvisions').textContent = formatCurrency(netApresProvisions);
 
-            // Mise à jour des alertes contextuelles
-            triggerAlerts(caHT, vateValue, tvaFacturee);
+            triggerAlerts(caHT, tvaFacturee);
         }
 
-        // Système d'alertes PM
-        function triggerAlerts(caHT, vat, tvaFacturee) {
+        function triggerAlerts(caHT, tvaFacturee) {
             const alerts = [];
             if (!tvaFacturee && caHT > SEUIL_TVA) {
                 alerts.push({ type:'warning', icon:'⚠️', message:`Attention : Votre CA de ${formatCurrency(caHT)} dépasse le seuil de franchise de TVA (${formatCurrency(SEUIL_TVA)}). Activez l'option TVA !` });
@@ -691,12 +676,10 @@
             alertsContainer.innerHTML = alerts.map(a => `<div class="alert-box alert-${a.type}"><span class="alert-icon">${a.icon}</span><span>${a.message}</span></div>`).join('');
         }
 
-        // Listeners d'interface
         const inputs = [calculationMode, tjm, netAnnualTarget, daysPerYear, daysPerWeek, totalDays, fiscalParts, sourceRate, vatEnabled, fraisReelsAmount, chargesDeductiblesEnabled, calculsAvancesEnabled, fraisFormation, materielInfo, fraisDeplacementKm, abonnementsLogiciels, fraisBureau, abattement, fraisReels, missionByWeek, missionByTotal, missionMonths, weeksPerMonth, rateUrssafAA, rateRaapAA, rateUrssafME, rateCfpME];
         
         inputs.forEach(input => {
             input.addEventListener('input', () => {
-                // Toggles de visibilité à la volée
                 tjmGroup.classList.toggle('hidden', calculationMode.value === 'netAnnual');
                 netAnnualGroup.classList.toggle('hidden', calculationMode.value !== 'netAnnual');
                 daysPerYearGroup.classList.toggle('hidden', calculationMode.value !== 'tjm');
@@ -707,8 +690,6 @@
                 chargesDeductiblesGroup.classList.toggle('hidden', !chargesDeductiblesEnabled.checked || currentRegime === 'micro-entreprise');
                 calculsAvancesResults.classList.toggle('hidden', !calculsAvancesEnabled.checked);
                 
-                tjmLabel.textContent = vatEnabled.checked ? 'TJM TTC (€)' : 'TJM HT (€)';
-                
                 if(chargesDeductiblesEnabled.checked && currentRegime === 'artiste-auteur') {
                     document.getElementById('totalChargesDeductibles').textContent = formatCurrency(calculateChargesDeductibles());
                 }
@@ -716,7 +697,6 @@
             });
         });
 
-        // Reset
         resetButton.addEventListener('click', () => {
             tjm.value = 650;
             daysPerYear.value = 200;
@@ -725,7 +705,6 @@
             setRegime('artiste-auteur');
         });
 
-        // Init automatique
         calculate();
     </script>
 </body>
