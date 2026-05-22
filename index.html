@@ -130,8 +130,8 @@
                 <div class="form-group">
                     <label class="form-label" for="calculationMode">Mode de calcul</label>
                     <select class="form-select" id="calculationMode">
-                        <option value="mission">Mission ponctuelle</option>
-                        <option value="tjm" selected>TJM + jours facturés/an</option>
+                        <option value="mission" selected>Mission ponctuelle</option>
+                        <option value="tjm">TJM + jours facturés/an</option>
                         <option value="netAnnual">Revenu net annuel souhaité</option>
                     </select>
                 </div>
@@ -148,45 +148,48 @@
                     <input type="number" class="form-input" id="netAnnualTarget" min="0" step="1000" value="50000">
                 </div>
 
-                <!-- Jours facturés par an -->
-                <div class="form-group" id="daysPerYearGroup">
+                <!-- Jours facturés par an (hidden by default since 'mission' is active) -->
+                <div class="form-group hidden" id="daysPerYearGroup">
                     <label class="form-label" for="daysPerYear">Nombre de jours facturés par an</label>
                     <input type="number" class="form-input" id="daysPerYear" min="0" max="365" value="200">
                 </div>
 
-                <!-- Mission ponctuelle -->
-                <div id="missionGroup" class="hidden">
+                <!-- Mission ponctuelle (visible by default) -->
+                <div id="missionGroup">
                     <div class="form-group">
                         <label class="form-label">Type de mission</label>
                         <div class="radio-group">
                             <div class="radio-option">
-                                <input type="radio" id="missionByWeek" name="missionType" value="byWeek">
+                                <input type="radio" id="missionByWeek" name="missionType" value="byWeek" checked>
                                 <label for="missionByWeek">Rythme/semaine</label>
                             </div>
                             <div class="radio-option">
-                                <input type="radio" id="missionByTotal" name="missionType" value="byTotal" checked>
+                                <input type="radio" id="missionByTotal" name="missionType" value="byTotal">
                                 <label for="missionByTotal">Total de jours</label>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-group hidden" id="weeklyRateGroup">
+                    <!-- Rythme par semaine (visible by default) -->
+                    <div class="form-group" id="weeklyRateGroup">
                         <label class="form-label" for="daysPerWeek">Jours facturés par semaine</label>
                         <input type="number" class="form-input" id="daysPerWeek" min="0.5" max="7" step="0.5" value="3">
                     </div>
 
-                    <div class="form-group" id="totalDaysGroup">
+                    <!-- Nombre total de jours (masqué par défaut car rythme/semaine est actif) -->
+                    <div class="form-group hidden" id="totalDaysGroup">
                         <label class="form-label" for="totalDays">Nombre total de jours facturés (par mois)</label>
-                        <input type="number" class="form-input" id="totalDays" min="1" value="60">
+                        <input type="number" class="form-input" id="totalDays" min="1" value="20">
                         <div class="info-text">Interprété comme <em>jours par mois</em> quand la durée en mois est appliquée.</div>
                     </div>
 
+                    <!-- Durée en mois -->
                     <div class="form-group" id="missionMonthsGroup">
                         <label class="form-label" for="missionMonths">Durée (mois)</label>
                         <select class="form-select" id="missionMonths">
-                            <option value="1">1 mois</option>
+                            <option value="1" selected>1 mois</option>
                             <option value="2">2 mois</option>
-                            <option value="3" selected>3 mois</option>
+                            <option value="3">3 mois</option>
                             <option value="4">4 mois</option>
                             <option value="5">5 mois</option>
                             <option value="6">6 mois</option>
@@ -225,7 +228,7 @@
                 <!-- Type de calcul IR (Masqué si Micro-entreprise) -->
                 <div class="form-group-conditional-regime" id="irCalculationBlock">
                     <div class="form-group">
-                        <label class="form-label">Calcul de l'impôt sur le revue (AA)</label>
+                        <label class="form-label">Calcul de l'impôt sur le revenu (AA)</label>
                         <div class="radio-group">
                             <div class="radio-option">
                                 <input type="radio" id="abattement" name="irCalculation" value="abattement" checked>
@@ -307,7 +310,7 @@
                         </div>
                         <div>
                             <label class="info-text">URSSAF Micro-Ent. (%)</label>
-                            <input type="number" class="form-input" id="rateUrssafME" step="0.1" value="23.2">
+                            <input type="number" class="form-input" id="rateUrssafME" step="0.1" value="25.6">
                         </div>
                         <div>
                             <label class="info-text">CFP Micro-Ent. (%)</label>
@@ -546,6 +549,24 @@
             return formation + materiel + km + logiciels + bureau;
         }
 
+        function updateVisibility() {
+            tjmGroup.classList.toggle('hidden', calculationMode.value === 'netAnnual');
+            netAnnualGroup.classList.toggle('hidden', calculationMode.value !== 'netAnnual');
+            daysPerYearGroup.classList.toggle('hidden', calculationMode.value !== 'tjm');
+            missionGroup.classList.toggle('hidden', calculationMode.value !== 'mission');
+            weeklyRateGroup.classList.toggle('hidden', !missionByWeek.checked || calculationMode.value !== 'mission');
+            totalDaysGroup.classList.toggle('hidden', missionByWeek.checked || calculationMode.value !== 'mission');
+            fraisReelsInput.classList.toggle('hidden', !fraisReels.checked || currentRegime === 'micro-entreprise');
+            chargesDeductiblesGroup.classList.toggle('hidden', !chargesDeductiblesEnabled.checked || currentRegime === 'micro-entreprise');
+            calculsAvancesResults.classList.toggle('hidden', !calculsAvancesEnabled.checked);
+            
+            tjmLabel.textContent = vatEnabled.checked ? 'TJM TTC (€)' : 'TJM HT (€)';
+            
+            if(chargesDeductiblesEnabled.checked && currentRegime === 'artiste-auteur') {
+                document.getElementById('totalChargesDeductibles').textContent = formatCurrency(calculateChargesDeductibles());
+            }
+        }
+
         function calculate() {
             updateLabels();
             const mode = calculationMode.value;
@@ -561,7 +582,6 @@
             let totalJoursSimules = 200; 
             let moisSimules = 12;
 
-            // Le TJM saisi est TOUJOURS considéré comme la base HT nette du freelance
             const inputTjmHT = parseFloat(tjm.value) || 0;
 
             if (mode === 'tjm') {
@@ -594,11 +614,9 @@
                 moisSimules = 12;
             }
 
-            // Correction de la logique de TVA : Elle s'AJOUTE au CA HT, elle ne le réduit pas.
             const vateValue = tvaFacturee ? caHT * 0.20 : 0;
             const revenueBrutTTC = caHT + vateValue;
 
-            // Calcul des cotisations basées strictement sur le CA HT
             let urssafAAValue = 0;
             let raapAAValue = 0;
             let urssafMEValue = 0;
@@ -615,7 +633,6 @@
                 netAvantIR = caHT - urssafMEValue - cfpMEValue;
             }
 
-            // Assiette imposable
             let baseImposable = 0;
             if (currentRegime === 'artiste-auteur') {
                 if (fraisReels.checked) {
@@ -680,19 +697,7 @@
         
         inputs.forEach(input => {
             input.addEventListener('input', () => {
-                tjmGroup.classList.toggle('hidden', calculationMode.value === 'netAnnual');
-                netAnnualGroup.classList.toggle('hidden', calculationMode.value !== 'netAnnual');
-                daysPerYearGroup.classList.toggle('hidden', calculationMode.value !== 'tjm');
-                missionGroup.classList.toggle('hidden', calculationMode.value !== 'mission');
-                weeklyRateGroup.classList.toggle('hidden', !missionByWeek.checked || calculationMode.value !== 'mission');
-                totalDaysGroup.classList.toggle('hidden', missionByWeek.checked || calculationMode.value !== 'mission');
-                fraisReelsInput.classList.toggle('hidden', !fraisReels.checked || currentRegime === 'micro-entreprise');
-                chargesDeductiblesGroup.classList.toggle('hidden', !chargesDeductiblesEnabled.checked || currentRegime === 'micro-entreprise');
-                calculsAvancesResults.classList.toggle('hidden', !calculsAvancesEnabled.checked);
-                
-                if(chargesDeductiblesEnabled.checked && currentRegime === 'artiste-auteur') {
-                    document.getElementById('totalChargesDeductibles').textContent = formatCurrency(calculateChargesDeductibles());
-                }
+                updateVisibility();
                 calculate();
             });
         });
@@ -700,11 +705,19 @@
         resetButton.addEventListener('click', () => {
             tjm.value = 650;
             daysPerYear.value = 200;
-            calculationMode.value = 'tjm';
+            calculationMode.value = 'mission';
+            missionByWeek.checked = true;
+            missionByTotal.checked = false;
+            totalDays.value = 20;
+            missionMonths.value = "1";
+            rateUrssafME.value = 25.6;
             vatEnabled.checked = false;
             setRegime('artiste-auteur');
+            updateVisibility();
         });
 
+        // Init synchrone de l'UI et des calculs au chargement
+        updateVisibility();
         calculate();
     </script>
 </body>
